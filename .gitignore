@@ -1,0 +1,24 @@
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Vectorstore local caches
+vectorstore/
+faiss_index/
+uploaded_*
+
+# Temp uploads & cache
+uploaded_docs/
+temp/
+.pytest_cache/

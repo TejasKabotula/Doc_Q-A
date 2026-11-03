@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI PDF Learning Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --accent-purple: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --error: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-group h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--accent), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-group p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .badge-status {
+            background-color: #064e3b;
+            color: #6ee7b7;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.35rem 0.8rem;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #34d399;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            flex: 1;
+            padding: 1.5rem;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sidebar Panel */
+        .sidebar-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: fit-content;
+        }
+
+        .sidebar-card h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .upload-dropzone {
+            border: 2px dashed var(--card-border);
+            border-radius: 8px;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .upload-dropzone:hover {
+            border-color: var(--accent);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .upload-dropzone input[type="file"] {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(90deg, var(--accent), var(--accent-purple));
+            color: white;
+            border: none;
+            padding: 0.65rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            width: 100%;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Main Workspace Panel */
+        .main-workspace {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 0.5rem;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 0.35rem;
+            width: fit-content;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.5rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            flex: 1;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Chat Styles */
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 550px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            max-width: 80%;
+            border-radius: 10px;
+            padding: 0.9rem 1.1rem;
+            font-size: 0.92rem;
+            line-height: 1.5;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--accent);
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            color: var(--text-main);
+            border-bottom-left-radius: 2px;
+        }
+
+        .context-toggle {
+            font-size: 0.78rem;
+            color: #38bdf8;
+            margin-top: 0.5rem;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .context-details {
+            display: none;
+            background: #1e293b;
+            border: 1px solid #334155;
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-top: 0.4rem;
+            font-size: 0.75rem;
+            color: #cbd5e1;
+            white-space: pre-wrap;
+        }
+
+        .chat-input-bar {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            color: white;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .chat-input-bar input:focus {
+            border-color: var(--accent);
+        }
+
+        /* Quiz Styles */
+        .quiz-config {
+            display: grid;
+            grid-template-columns: 2fr 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            background-color: #0f172a;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--card-border);
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 0.3rem;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            background-color: #1e293b;
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 0.55rem;
+            color: white;
+            outline: none;
+        }
+
+        .question-card {
+            background-color: #0f172a;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .question-title {
+            font-weight: 600;
+            font-size: 0.98rem;
+            margin-bottom: 0.8rem;
+            color: #f1f5f9;
+        }
+
+        .option-item {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .option-item:hover {
+            border-color: var(--accent);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .option-item input[type="radio"] {
+            accent-color: var(--accent);
+        }
+
+        .quiz-result-score {
+            background: linear-gradient(90deg, #1e3a8a, #4c1d95);
+            border-radius: 8px;
+            padding: 1.2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .feedback-box {
+            margin-top: 0.5rem;
+            padding: 0.5rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .feedback-correct {
+            background-color: #064e3b;
+            color: #a7f3d0;
+        }
+
+        .feedback-incorrect {
+            background-color: #7f1d1d;
+            color: #fecaca;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-group">
+            <h1>📚 PDF Learning Assistant</h1>
+            <p>FastAPI Backend • Vanilla HTML & CSS Frontend • RAG with FAISS & Gemini</p>
+        </div>
+        <div class="badge-status">
+            <span class="badge-dot"></span>
+            <span id="status-text">Index Active: sample.pdf</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Sidebar Controls -->
+        <aside class="sidebar-card">
+            <h3>📄 Knowledge Base</h3>
+            <div class="upload-dropzone" onclick="document.getElementById('file-input').click()">
+                <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">📤</div>
+                <div style="font-weight: 600; font-size: 0.9rem;" id="file-label">Click to select PDF</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.2rem;">Supports .pdf documents</div>
+                <input type="file" id="file-input" accept=".pdf" onchange="handleFileSelect(event)">
+            </div>
+            <button class="btn" id="upload-btn" onclick="uploadAndIndexPDF()" disabled>
+                ⚡ Index Document
+            </button>
+            <div id="upload-msg" style="font-size: 0.8rem; text-align: center;"></div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-workspace">
+            <!-- Tabs Header -->
+            <div class="tab-bar">
+                <button class="tab-btn active" onclick="switchTab('chat')">💬 Ask Queries</button>
+                <button class="tab-btn" onclick="switchTab('quiz')">📝 Take Quiz</button>
+            </div>
+
+            <!-- Tab 1: Chat -->
+            <section id="tab-chat" class="tab-content active">
+                <div class="chat-box" id="chat-box">
+                    <div class="message assistant">
+                        Hello! I'm your AI PDF learning assistant. Ask me anything about your uploaded document!
+                    </div>
+                </div>
+                <div class="chat-input-bar">
+                    <input type="text" id="query-input" placeholder="Ask a question about the document..." onkeydown="if(event.key==='Enter') sendQuery()">
+                    <button class="btn" style="width: auto; padding: 0.75rem 1.5rem;" onclick="sendQuery()" id="send-btn">Ask</button>
+                </div>
+            </section>
+
+            <!-- Tab 2: Quiz -->
+            <section id="tab-quiz" class="tab-content">
+                <div class="quiz-config">
+                    <div class="form-group">
+                        <label>Quiz Topic / Subject</label>
+                        <input type="text" id="quiz-topic" value="Main concepts" placeholder="e.g. Machine Learning, Architecture">
+                    </div>
+                    <div class="form-group">
+                        <label>Questions</label>
+                        <select id="quiz-count">
+                            <option value="3">3 Questions</option>
+                            <option value="5" selected>5 Questions</option>
+                            <option value="10">10 Questions</option>
+                        </select>
+                    </div>
+                    <div style="margin-top: 1.1rem;">
+                        <button class="btn" onclick="generateQuiz()" id="quiz-gen-btn">Generate Quiz</button>
+                    </div>
+                </div>
+
+                <div id="quiz-container">
+                    <div style="text-align: center; color: var(--text-muted); padding: 3rem 1rem;">
+                        Click "Generate Quiz" above to create an interactive test from your PDF!
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        let selectedFile = null;
+        let currentQuizData = [];
+
+        // Tab Switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            if (tab === 'chat') {
+                document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+                document.getElementById('tab-chat').classList.add('active');
+            } else {
+                document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+                document.getElementById('tab-quiz').classList.add('active');
+            }
+        }
+
+        // File Selection
+        function handleFileSelect(e) {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                document.getElementById('file-label').innerText = selectedFile.name;
+                document.getElementById('upload-btn').disabled = false;
+            }
+        }
+
+        // Upload and Index PDF via FastAPI
+        async function uploadAndIndexPDF() {
+            if (!selectedFile) return;
+            const btn = document.getElementById('upload-btn');
+            const msg = document.getElementById('upload-msg');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Indexing...';
+            msg.innerHTML = '<span style="color: #38bdf8;">Extracting & indexing vectors...</span>';
+
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            try {
+                const res = await fetch("/api/upload", { method: "POST", body: formData });
+                const data = await res.json();
+                if (res.ok) {
+                    msg.innerHTML = `<span style="color: var(--success);">✓ Indexed ${data.chunks} chunks!</span>`;
+                    document.getElementById('status-text').innerText = `Index Active: ${selectedFile.name}`;
+                } else {
+                    msg.innerHTML = `<span style="color: var(--error);">Failed: ${data.detail}</span>`;
+                }
+            } catch (err) {
+                msg.innerHTML = `<span style="color: var(--error);">Error uploading: ${err}</span>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '⚡ Index Document';
+            }
+        }
+
+        // Send Query to RAG Pipeline
+        async function sendQuery() {
+            const input = document.getElementById('query-input');
+            const query = input.value.trim();
+            if (!query) return;
+
+            const chatBox = document.getElementById('chat-box');
+
+            // Append User Message
+            const userMsg = document.createElement('div');
+            userMsg.className = 'message user';
+            userMsg.innerText = query;
+            chatBox.appendChild(userMsg);
+            input.value = '';
+
+            // Assistant placeholder
+            const assistMsg = document.createElement('div');
+            assistMsg.className = 'message assistant';
+            assistMsg.innerHTML = '<span class="spinner"></span> Thinking & retrieving...';
+            chatBox.appendChild(assistMsg);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            try {
+                const res = await fetch("/api/chat", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ question: query })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    let contextHtml = '';
+                    if (data.contexts && data.contexts.length > 0) {
+                        contextHtml = `
+                            <span class="context-toggle" onclick="toggleContext(this)">🔍 View ${data.contexts.length} Retrieved Chunks ▼</span>
+                            <div class="context-details">${data.contexts.map((c, i) => `[Chunk ${i+1}]:\n${c}`).join('\n\n')}</div>
+                        `;
+                    }
+                    assistMsg.innerHTML = `${data.answer} ${contextHtml}`;
+                } else {
+                    assistMsg.innerHTML = `<span style="color: var(--error);">Error: ${data.detail}</span>`;
+                }
+            } catch (err) {
+                assistMsg.innerHTML = `<span style="color: var(--error);">Request error: ${err}</span>`;
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function toggleContext(elem) {
+            const details = elem.nextElementSibling;
+            if (details.style.display === 'block') {
+                details.style.display = 'none';
+                elem.innerText = elem.innerText.replace('▲', '▼');
+            } else {
+                details.style.display = 'block';
+                elem.innerText = elem.innerText.replace('▼', '▲');
+            }
+        }
+
+        // Generate Quiz via FastAPI
+        async function generateQuiz() {
+            const topic = document.getElementById('quiz-topic').value || "Main concepts";
+            const count = parseInt(document.getElementById('quiz-count').value);
+            const container = document.getElementById('quiz-container');
+            const btn = document.getElementById('quiz-gen-btn');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Generating...';
+            container.innerHTML = `<div style="text-align: center; padding: 2rem;"><span class="spinner"></span> Generating quiz on "${topic}"...</div>`;
+
+            try {
+                const res = await fetch("/api/quiz", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ topic: topic, num_questions: count })
+                });
+                const data = await res.json();
+                if (res.ok && data.questions && data.questions.length > 0) {
+                    currentQuizData = data.questions;
+                    renderQuizForm(data.questions);
+                } else {
+                    container.innerHTML = `<div style="color: var(--error); text-align: center;">Failed to generate quiz: ${data.detail || 'No questions parsed.'}</div>`;
+                }
+            } catch (err) {
+                container.innerHTML = `<div style="color: var(--error); text-align: center;">Error: ${err}</div>`;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Generate Quiz';
+            }
+        }
+
+        function renderQuizForm(questions) {
+            const container = document.getElementById('quiz-container');
+            let html = '';
+
+            questions.forEach(q => {
+                html += `
+                    <div class="question-card" id="q-card-${q.id}">
+                        <div class="question-title">Q${q.id}: ${q.question}</div>
+                        ${['A', 'B', 'C', 'D'].map(opt => `
+                            <label class="option-item">
+                                <input type="radio" name="question_${q.id}" value="${opt}">
+                                <span><strong>${opt}:</strong> ${q.options[opt] || ''}</span>
+                            </label>
+                        `).join('')}
+                        <div class="feedback-box" id="feedback-${q.id}" style="display: none;"></div>
+                    </div>
+                `;
+            });
+
+            html += `<button class="btn" style="margin-top: 1rem;" onclick="submitQuiz()">Submit Answers</button>`;
+            container.innerHTML = html;
+        }
+
+        function submitQuiz() {
+            let correct = 0;
+            const total = currentQuizData.length;
+
+            currentQuizData.forEach(q => {
+                const selected = document.querySelector(`input[name="question_${q.id}"]:checked`);
+                const userChoice = selected ? selected.value : null;
+                const feedback = document.getElementById(`feedback-${q.id}`);
+                feedback.style.display = 'block';
+
+                if (userChoice === q.correct_answer) {
+                    correct++;
+                    feedback.className = 'feedback-box feedback-correct';
+                    feedback.innerHTML = `✓ <strong>Correct!</strong> ${q.explanation}`;
+                } else {
+                    feedback.className = 'feedback-box feedback-incorrect';
+                    feedback.innerHTML = `✗ <strong>Incorrect.</strong> Correct answer is <strong>${q.correct_answer}</strong>.<br>${q.explanation}`;
+                }
+            });
+
+            const scorePercent = Math.round((correct / total) * 100);
+            const scoreCard = `
+                <div class="quiz-result-score">
+                    🎯 Final Score: ${correct} / ${total} (${scorePercent}%)
+                </div>
+            `;
+            const container = document.getElementById('quiz-container');
+            container.insertAdjacentHTML('afterbegin', scoreCard);
+            window.scrollTo({ top: container.offsetTop, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
+
