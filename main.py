@@ -3,19 +3,17 @@ import shutil
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from ingestion import run_ingestion
-from rag_pipeline import answer_query, generate_quiz
+from pipeline import run_ingestion, answer_query, generate_quiz
 
 app = FastAPI(title="PDF Learning Assistant RAG API")
 
-# Ensure static and templates exist
 BASE_DIR = Path(__file__).resolve().parent
-INDEX_HTML = BASE_DIR / "templates" / "index.html"
+FRONTEND_HTML = BASE_DIR / "frontend" / "index.html"
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(exist_ok=True)
 
-# Pydantic request models
 class QueryRequest(BaseModel):
     question: str
 
@@ -24,31 +22,29 @@ class QuizRequest(BaseModel):
     num_questions: int = 5
 
 @app.get("/")
-async def serve_home():
-    """Serve the single-page HTML frontend."""
-    if not INDEX_HTML.exists():
-        raise HTTPException(status_code=404, detail="Frontend template not found.")
-    return FileResponse(INDEX_HTML)
+async def serve_frontend():
+    """Serves the single-page HTML frontend from the frontend folder."""
+    if not FRONTEND_HTML.exists():
+        raise HTTPException(status_code=404, detail="frontend/index.html not found.")
+    return FileResponse(FRONTEND_HTML)
 
 @app.get("/api/status")
 async def get_status():
-    """Return vector index readiness."""
-    has_index = os.path.exists("faiss_index")
-    return {"indexed": has_index}
+    """Returns vector index status."""
+    return {"indexed": os.path.exists("faiss_index")}
 
 @app.post("/api/upload")
 async def upload_pdf(file: UploadFile = File(...)):
-    """Upload a PDF, extract text, chunk, and index into FAISS."""
+    """Saves uploaded PDF to data/ folder and runs the ingestion pipeline."""
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")
 
-    save_path = f"uploaded_{file.filename}"
+    save_path = DATA_DIR / file.filename
     try:
         with open(save_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Run ingestion pipeline
-        vectorstore = run_ingestion(save_path, index_dir="faiss_index")
+        run_ingestion(str(save_path), index_dir="faiss_index")
         return {
             "status": "success",
             "filename": file.filename,
@@ -61,30 +57,24 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 @app.post("/api/chat")
 async def chat_query(req: QueryRequest):
-    """Retrieve top FAISS chunks and generate Gemini RAG answer."""
+    """Answers a question using RAG from the FAISS vector store."""
     if not req.question or not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
     try:
         answer, docs = answer_query(req.question.strip())
         contexts = [d.page_content for d in docs]
-        return {
-            "answer": answer,
-            "contexts": contexts
-        }
+        return {"answer": answer, "contexts": contexts}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/quiz")
 async def make_quiz(req: QuizRequest):
-    """Generate multiple-choice quiz grounded in FAISS retrieved chunks."""
+    """Generates an MCQ quiz based on retrieved document chunks."""
     try:
-        questions, docs = generate_quiz(
-            topic=req.topic or "Main concepts",
-            num_questions=req.num_questions
-        )
+        questions, _ = generate_quiz(topic=req.topic, num_questions=req.num_questions)
         if not questions:
-            raise HTTPException(status_code=500, detail="No questions could be generated from document context.")
+            raise HTTPException(status_code=500, detail="Unable to generate questions from document context.")
         return {"questions": questions}
     except HTTPException:
         raise
@@ -94,4 +84,3 @@ async def make_quiz(req: QuizRequest):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
